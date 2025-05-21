@@ -17,7 +17,7 @@ select {
   -webkit-appearance: none;
   -moz-appearance: none;
   text-indent: 1px;
-  text-overflow: '';
+  text-overflow: "";
 }
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -32,9 +32,9 @@ select {
     --background-end-rgb: 0, 0, 0;
   }
 }
-* {
+/* * {
   overflow-x: hidden;
-}
+} */
 body {
   color: rgb(var(--foreground-rgb));
   overflow-x: hidden;

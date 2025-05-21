@@ -1,67 +1,113 @@
-"use client";
-
-import { FC } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { ArrowLine, ExitIcon, WalletIcon, WhiteWalletIcon } from "./SvgIcon";
+import { FC, useState, useEffect } from "react";
+import { ethers } from "ethers";
+import Swal from "sweetalert2";
 
 interface Props {
   showSideBar?: boolean;
 }
+
 const ConnectButton: FC<Props> = ({ showSideBar }) => {
-  const { setVisible } = useWalletModal();
-  const { publicKey, disconnect } = useWallet();
-  return (
-    <button className="rounded-xl bg-primary-200 text-[white] tracking-[0.32px] py-2 px-4 group relative">
-      {publicKey ? (
-        <>
-          <div className="flex items-center justify-center text-[12px] lg:text-[16px]">
-            {publicKey.toBase58().slice(0, 4)}....
-            {publicKey.toBase58().slice(-4)}
-            <div className="rotate-90 w-3 h-3">
-              <ArrowLine />
-            </div>
-          </div>
-          <div className="w-[200px] absolute left-0 top-10 hidden group-hover:block">
-            <ul className="border-[0.75px] border-[#89C7B5] rounded-lg bg-[#162923] p-2 mt-2">
-              <li>
-                <button
-                  className="flex gap-2 items-center text-[white] tracking-[-0.32px]"
-                  onClick={() => setVisible(true)}
-                >
-                  <WalletIcon /> Change Wallet
-                </button>
-              </li>
-              <li>
-                <button
-                  className="flex gap-2 items-center text-[white] tracking-[-0.32px]"
-                  onClick={disconnect}
-                >
-                  <ExitIcon /> Disconnect
-                </button>
-              </li>
-            </ul>
-          </div>
-        </>
-      ) : (
-        <div
-          className="flex items-center justify-center gap-1 text-[12px] lg:text-[16px]"
-          onClick={() => setVisible(true)}
-        >
-          <WhiteWalletIcon />{" "}
-          {showSideBar ? (
-            <span className="">Connect Wallet</span>
-          ) : (
-            <div>
-              <span className="hidden md:inline">Connect Wallet</span>
-              <span className="md:hidden">Connect</span>
-            </div>
-          )}
-        </div>
-      )
+  const [ethAddress, setEthAddress] = useState<string | null>(null);
+  const [ethBalance, setEthBalance] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchEthBalance() {
+      if (!window.ethereum || !ethAddress) {
+        setEthBalance(null);
+        return;
       }
-      {/* <div className=""></div> */}
-    </button >
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const balanceWei = await provider.getBalance(ethAddress);
+        const balanceEth = ethers.formatEther(balanceWei);
+        setEthBalance(balanceEth);
+      } catch (err) {
+        console.error("Error fetching MetaMask balance:", err);
+        Swal.fire({
+          icon: "error",
+          title: "Balance Error",
+          text: "Failed to fetch ETH balance.",
+        });
+        setEthBalance(null);
+      }
+    }
+    fetchEthBalance();
+  }, [ethAddress]);
+
+  const connectMetaMask = async () => {
+    if (!window.ethereum) {
+      Swal.fire({
+        icon: "error",
+        title: "MetaMask Not Found",
+        text: "Please install MetaMask to continue.",
+      });
+      return;
+    }
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      if (accounts.length > 0) {
+        setEthAddress(accounts[0]);
+        Swal.fire({
+          icon: "success",
+          title: "Connected",
+          text: "MetaMask connected successfully!",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+    } catch (err) {
+      console.error("MetaMask connection error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Connection Failed",
+        text: "Could not connect to MetaMask.",
+      });
+    }
+  };
+
+  const disconnectMetaMask = () => {
+    setEthAddress(null);
+    setEthBalance(null);
+    Swal.fire({
+      icon: "info",
+      title: "Disconnected",
+      text: "MetaMask has been disconnected.",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  };
+
+  return (
+    <div className="p-5 flex gap-4 flex-wrap">
+      {ethAddress ? (
+        <div className="relative group">
+          <button
+            onClick={disconnectMetaMask}
+            className="rounded-xl bg-primary-200 text-white py-2 px-4 cursor-pointer relative overflow-hidden"
+          >
+            {/* Address */}
+            <span className="group-hover:hidden transition duration-300 block">
+              {`${ethAddress.slice(0, 6)}...${ethAddress.slice(-4)}`}
+            </span>
+
+            {/* Balance */}
+            <span className="hidden group-hover:flex transition duration-300">
+              Balance:{" "}
+              {ethBalance ? parseFloat(ethBalance).toFixed(1) : "Loading..."}{" "}
+              ETH | Disconnect
+            </span>
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={connectMetaMask}
+          className="rounded-xl bg-primary-200 text-white py-2 px-4 cursor-pointer"
+        >
+          Connect MetaMask
+        </button>
+      )}
+    </div>
   );
 };
 
